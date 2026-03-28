@@ -31,40 +31,45 @@ const Badge = ({ children, className = "" }) =>
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
   
-  // Function to adjust modal position when opened
-  const adjustModalPosition = () => {
-    // Small delay to ensure modal is rendered
-    setTimeout(() => {
-      const modalOverlay = document.querySelector('.modal-overlay');
-      if (modalOverlay) {
-        // Force reflow to ensure proper positioning
-        modalOverlay.style.transform = 'translateZ(0)';
-      }
-    }, 10);
-  };
-  
   // Prevent background scrolling when modal opens
   React.useEffect(() => {
     if (isOpen) {
       // Disable scrolling on body
       document.body.style.overflow = 'hidden';
-      adjustModalPosition();
     }
     
-    // Re-enable scrolling when modal closes
+    // Re-enable scrolling when modal closes or unmounts
     return () => {
       document.body.style.overflow = '';
     };
   }, [isOpen]);
   
+  // Also handle escape key and ensure cleanup on close
+  React.useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+  
+  // Handle closing the modal (ensures scrolling is re-enabled)
+  const handleClose = () => {
+    document.body.style.overflow = '';
+    onClose();
+  };
+  
   return React.createElement('div', {
     className: "modal-overlay",
-    onClick: (e) => e.target === e.currentTarget && onClose()
+    onClick: (e) => e.target === e.currentTarget && handleClose()
   },
     React.createElement('div', { className: "modal-content" },
       React.createElement('div', { className: "modal-header" },
         React.createElement('h2', { className: "text-xl font-bold text-white" }, title),
-        React.createElement(Button, { variant: "ghost", size: "sm", onClick: onClose }, "✕")
+        React.createElement(Button, { variant: "ghost", size: "sm", onClick: handleClose }, "✕")
       ),
       React.createElement('div', { className: "modal-body" }, children)
     )
@@ -135,6 +140,8 @@ const SkinNameBrowser = ({ isOpen, onClose, onSelectSkin }) => {
           const newSearches = [playerName.trim(), ...recentSearches.filter(s => s !== playerName.trim())].slice(0, 8);
           setRecentSearches(newSearches);
           
+          // Ensure scrolling is re-enabled before closing modal
+          document.body.style.overflow = '';
           onSelectSkin(skinUrl, playerName.trim());
           onClose();
           resolve();
@@ -288,6 +295,8 @@ const ZipOverlayBrowser = ({ isOpen, onClose, onSelectOverlay }) => {
       selectedUrl = overlay.urls.get('normal.png');
     }
     
+    // Ensure scrolling is re-enabled before closing modal
+    document.body.style.overflow = '';
     onSelectOverlay(selectedUrl, overlay.name);
     onClose();
   };
@@ -1015,7 +1024,30 @@ function App() {
       onSelectOverlay: handleZipOverlaySelect
     }),
 
+    // About section
+    React.createElement('footer', { className: "max-w-7xl mx-auto p-6 mt-8" },
+      React.createElement(Card, { className: "bg-white/5 backdrop-blur-sm border border-slate-700/50" },
+        React.createElement('h3', { className: "text-xl font-semibold text-white mb-3" }, "About This Tool"),
+        React.createElement('div', { className: "space-y-2 text-slate-300 text-sm leading-relaxed mb-4" },
+          React.createElement('p', null, 
+            "This free client-side tool allows you to merge Minecraft skin overlays without uploading anything to servers. All processing happens directly in your browser, ensuring your privacy and security."
+          ),
+          React.createElement('p', null, 
+            "Upload a base Minecraft skin, add an overlay from your device or browse the OR Feed collection, preview the result in 3D, and download the merged skin instantly. No registration required - completely free to use!"
+          )
+        ),
+        React.createElement(Card, { className: "bg-slate-800/30 border border-slate-600/30" },
+          React.createElement('div', { className: "flex flex-wrap gap-3" },
+            React.createElement(Badge, { className: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 rounded-full px-3 py-1" }, "🔒 Privacy-First: No uploads, all processing local"),
+            React.createElement(Badge, { className: "bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 rounded-full px-3 py-1" }, "🎨 Features: 3D preview, OR Feed integration, username browser"),
+            React.createElement(Badge, { className: "bg-purple-500/20 text-purple-300 border border-purple-500/50 rounded-full px-3 py-1" }, "💯 Free: No cost, no registration needed")
+          )
+        )
+      )
+    ),
+
     // Development notice banner - positioned to move with content for glassmorphism effect
+    /*
     React.createElement('div', { 
       style: {
         position: 'sticky',
@@ -1058,6 +1090,7 @@ function App() {
       }, "ph4_0"),
       " on Discord for any issues or feedback."
     )
+    */
   );
 }
 
